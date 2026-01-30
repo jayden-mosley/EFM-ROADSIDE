@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vehicle Defect Log</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    padding: 20px;
+}
+h1, h2 {
+    margin-top: 30px;
+}
+form, .log, table {
+    background: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+input, textarea, button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 8px;
+}
+button {
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+button.complete {
+    background: #28a745;
+}
+.log {
+    border-left: 5px solid #007bff;
+}
+.timer {
+    font-weight: bold;
+    color: #c00;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+th {
+    background: #eee;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Vehicle Log System</h1>
+
+<form id="logForm">
+    <input id="reg" placeholder="Vehicle Registration" required>
+    <input id="order" placeholder="Order Number" required>
+    <textarea id="defect" placeholder="Defect" required></textarea>
+    <textarea id="solution" placeholder="Proposed Solution" required></textarea>
+    <button type="submit">Add Log</button>
+</form>
+
+<h2>Active Logs</h2>
+<div id="logs"></div>
+
+<h2>Completed Jobs</h2>
+<button onclick="downloadCSV()">Download Excel (CSV)</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Reg</th>
+            <th>Order</th>
+            <th>Defect</th>
+            <th>Solution</th>
+            <th>Completed Time</th>
+        </tr>
+    </thead>
+    <tbody id="completedTable"></tbody>
+</table>
+
+<script>
+const logsDiv = document.getElementById("logs");
+const completedTable = document.getElementById("completedTable");
+
+let completedJobs = JSON.parse(localStorage.getItem("completedJobs")) || [];
+
+// Render completed jobs on load
+completedJobs.forEach(addCompletedRow);
+
+document.getElementById("logForm").addEventListener("submit", e => {
+    e.preventDefault();
+
+    const log = {
+        reg: reg.value,
+        order: order.value,
+        defect: defect.value,
+        solution: solution.value,
+        start: Date.now()
+    };
+
+    createLog(log);
+    e.target.reset();
+});
+
+function createLog(log) {
+    const div = document.createElement("div");
+    div.className = "log";
+
+    const timerSpan = document.createElement("span");
+    timerSpan.className = "timer";
+
+    const interval = setInterval(() => {
+        const elapsed = Date.now() - log.start;
+        const remaining = 1800000 - elapsed; // 30 mins
+
+        if (remaining <= 0) {
+            alert(`30 minutes passed!\nCall roadside to confirm wellbeing.\nVehicle: ${log.reg}`);
+            clearInterval(interval);
+            timerSpan.textContent = "⏰ ALERT SENT";
+            return;
+        }
+
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        timerSpan.textContent = `⏱ ${mins}:${secs.toString().padStart(2, "0")}`;
+    }, 1000);
+
+    div.innerHTML = `
+        <strong>Reg:</strong> ${log.reg}<br>
+        <strong>Order:</strong> ${log.order}<br>
+        <strong>Defect:</strong> ${log.defect}<br>
+        <strong>Solution:</strong> ${log.solution}<br>
+    `;
+
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = "Complete Job";
+    completeBtn.className = "complete";
+
+    completeBtn.onclick = () => {
+        clearInterval(interval);
+
+        const completed = {
+            ...log,
+            completedTime: new Date().toLocaleString()
+        };
+
+        completedJobs.push(completed);
+        localStorage.setItem("completedJobs", JSON.stringify(completedJobs));
+        addCompletedRow(completed);
+        div.remove();
+    };
+
+    div.appendChild(timerSpan);
+    div.appendChild(document.createElement("br"));
+    div.appendChild(completeBtn);
+
+    logsDiv.appendChild(div);
+}
+
+function addCompletedRow(job) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+        <td>${job.reg}</td>
+        <td>${job.order}</td>
+        <td>${job.defect}</td>
+        <td>${job.solution}</td>
+        <td>${job.completedTime}</td>
+    `;
+    completedTable.appendChild(row);
+}
+
+function downloadCSV() {
+    let csv = "Reg,Order,Defect,Solution,Completed Time\n";
+    completedJobs.forEach(j => {
+        csv += `"${j.reg}","${j.order}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "completed_jobs.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
