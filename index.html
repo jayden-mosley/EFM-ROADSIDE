@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Vehicle Defect Log</title>
+
 <style>
 body {
     font-family: Arial, sans-serif;
@@ -39,6 +40,10 @@ button.complete {
     font-weight: bold;
     color: #c00;
 }
+.laps {
+    font-size: 0.9em;
+    color: #555;
+}
 table {
     width: 100%;
     border-collapse: collapse;
@@ -58,10 +63,13 @@ th {
 <h1>Vehicle Log System</h1>
 
 <form id="logForm">
-    <input id="reg" placeholder="Vehicle Registration" required>
-    <input id="order" placeholder="Order Number" required>
-    <textarea id="defect" placeholder="Defect" required></textarea>
-    <textarea id="solution" placeholder="Proposed Solution" required></textarea>
+    <input id="date" type="date" required>
+    <input id="store" placeholder="Store No" required>
+    <input id="name" placeholder="Name" required>
+    <input id="reg" placeholder="Reg No" required>
+    <input id="supplier" placeholder="Supplier" required>
+    <textarea id="defect" placeholder="What is wrong with van?" required></textarea>
+    <textarea id="solution" placeholder="Solution?" required></textarea>
     <button type="submit">Add Log</button>
 </form>
 
@@ -70,38 +78,52 @@ th {
 
 <h2>Completed Jobs</h2>
 <button onclick="downloadCSV()">Download Excel (CSV)</button>
+<button onclick="resetCompletedJobs()" style="background:#dc3545;">
+    Reset Completed Jobs
+</button>
 
 <table>
-    <thead>
-        <tr>
-            <th>Reg</th>
-            <th>Order</th>
-            <th>Defect</th>
-            <th>Solution</th>
-            <th>Completed Time</th>
-        </tr>
-    </thead>
-    <tbody id="completedTable"></tbody>
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Store</th>
+    <th>Name</th>
+    <th>Reg</th>
+    <th>Supplier</th>
+    <th>Defect</th>
+    <th>Solution</th>
+    <th>Completed</th>
+</tr>
+</thead>
+<tbody id="completedTable"></tbody>
 </table>
+
+<!-- Alert sound -->
+<audio id="alarmSound">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
 
 <script>
 const logsDiv = document.getElementById("logs");
 const completedTable = document.getElementById("completedTable");
+const alarmSound = document.getElementById("alarmSound");
 
 let completedJobs = JSON.parse(localStorage.getItem("completedJobs")) || [];
-
-// Render completed jobs on load
 completedJobs.forEach(addCompletedRow);
 
 document.getElementById("logForm").addEventListener("submit", e => {
     e.preventDefault();
 
     const log = {
+        date: date.value,
+        store: store.value,
+        name: name.value,
         reg: reg.value,
-        order: order.value,
+        supplier: supplier.value,
         defect: defect.value,
         solution: solution.value,
-        start: Date.now()
+        start: Date.now(),
+        laps: 0
     };
 
     createLog(log);
@@ -112,29 +134,38 @@ function createLog(log) {
     const div = document.createElement("div");
     div.className = "log";
 
-    const timerSpan = document.createElement("span");
+    const timerSpan = document.createElement("div");
     timerSpan.className = "timer";
 
+    const lapSpan = document.createElement("div");
+    lapSpan.className = "laps";
+    lapSpan.textContent = "30min checks: 0";
+
+    let startTime = Date.now();
+
     const interval = setInterval(() => {
-        const elapsed = Date.now() - log.start;
-        const remaining = 1800000 - elapsed; // 30 mins
+        const elapsed = Date.now() - startTime;
+        const remaining = 1800000 - elapsed;
 
         if (remaining <= 0) {
-            alert(`30 minutes passed!\nCall roadside to confirm wellbeing.\nVehicle: ${log.reg}`);
-            clearInterval(interval);
-            timerSpan.textContent = "⏰ ALERT SENT";
-            return;
+            log.laps++;
+            lapSpan.textContent = `30min checks: ${log.laps}`;
+            alarmSound.play();
+            startTime = Date.now(); // reset timer
         }
 
-        const mins = Math.floor(remaining / 60000);
-        const secs = Math.floor((remaining % 60000) / 1000);
+        const mins = Math.floor(Math.max(remaining, 0) / 60000);
+        const secs = Math.floor((Math.max(remaining, 0) % 60000) / 1000);
         timerSpan.textContent = `⏱ ${mins}:${secs.toString().padStart(2, "0")}`;
     }, 1000);
 
     div.innerHTML = `
+        <strong>Date:</strong> ${log.date}<br>
+        <strong>Store:</strong> ${log.store}<br>
+        <strong>Name:</strong> ${log.name}<br>
         <strong>Reg:</strong> ${log.reg}<br>
-        <strong>Order:</strong> ${log.order}<br>
-        <strong>Defect:</strong> ${log.defect}<br>
+        <strong>Supplier:</strong> ${log.supplier}<br>
+        <strong>Issue:</strong> ${log.defect}<br>
         <strong>Solution:</strong> ${log.solution}<br>
     `;
 
@@ -157,7 +188,7 @@ function createLog(log) {
     };
 
     div.appendChild(timerSpan);
-    div.appendChild(document.createElement("br"));
+    div.appendChild(lapSpan);
     div.appendChild(completeBtn);
 
     logsDiv.appendChild(div);
@@ -166,8 +197,11 @@ function createLog(log) {
 function addCompletedRow(job) {
     const row = document.createElement("tr");
     row.innerHTML = `
+        <td>${job.date}</td>
+        <td>${job.store}</td>
+        <td>${job.name}</td>
         <td>${job.reg}</td>
-        <td>${job.order}</td>
+        <td>${job.supplier}</td>
         <td>${job.defect}</td>
         <td>${job.solution}</td>
         <td>${job.completedTime}</td>
@@ -176,9 +210,9 @@ function addCompletedRow(job) {
 }
 
 function downloadCSV() {
-    let csv = "Reg,Order,Defect,Solution,Completed Time\n";
+    let csv = "Date,Store,Name,Reg,Supplier,Defect,Solution,Completed\n";
     completedJobs.forEach(j => {
-        csv += `"${j.reg}","${j.order}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
+        csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
     });
 
     const blob = new Blob([csv], { type: "text/csv" });
