@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Vehicle Defect Log</title>
+<title>Vehicle Log System</title>
 
 <style>
 body {
@@ -10,48 +10,123 @@ body {
     background: #f4f6f8;
     padding: 20px;
 }
+
 h1, h2 {
-    margin-top: 30px;
+    margin: 20px 0 10px;
 }
-form, .log, table {
+
+/* ---------- FORM LAYOUT ---------- */
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     background: #fff;
     padding: 15px;
     border-radius: 6px;
-    margin-bottom: 20px;
 }
-input, textarea, button {
-    width: 100%;
-    margin: 5px 0;
+
+form input, form textarea {
+    flex: 1 1 200px;
     padding: 8px;
 }
-button {
+
+form textarea {
+    min-height: 60px;
+}
+
+form button {
+    flex: 1 1 100%;
+    padding: 10px;
     background: #007bff;
     color: white;
     border: none;
     cursor: pointer;
 }
-button.complete {
-    background: #28a745;
+
+/* ---------- LOG CARDS ---------- */
+#logs {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
+
 .log {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 15px;
+    border-radius: 6px;
     border-left: 5px solid #007bff;
+    gap: 15px;
 }
+
+.log-details {
+    flex: 3;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px 15px;
+    font-size: 0.9em;
+}
+
+.log-timer {
+    flex: 1;
+    text-align: center;
+}
+
 .timer {
     font-weight: bold;
     color: #c00;
+    font-size: 1.1em;
 }
+
 .laps {
-    font-size: 0.9em;
+    font-size: 0.85em;
     color: #555;
 }
+
+.log button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* ---------- COMPLETED SECTION ---------- */
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.actions button {
+    padding: 8px 12px;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+.download {
+    background: #007bff;
+}
+
+.reset {
+    background: #dc3545;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
+    background: #fff;
 }
+
 th, td {
     border: 1px solid #ccc;
     padding: 8px;
+    font-size: 0.9em;
 }
+
 th {
     background: #eee;
 }
@@ -77,10 +152,10 @@ th {
 <div id="logs"></div>
 
 <h2>Completed Jobs</h2>
-<button onclick="downloadCSV()">Download Excel (CSV)</button>
-<button onclick="resetCompletedJobs()" style="background:#dc3545;">
-    Reset Completed Jobs
-</button>
+<div class="actions">
+    <button class="download" onclick="downloadCSV()">Download Excel (CSV)</button>
+    <button class="reset" onclick="resetCompletedJobs()">Reset Completed Jobs</button>
+</div>
 
 <table>
 <thead>
@@ -98,9 +173,8 @@ th {
 <tbody id="completedTable"></tbody>
 </table>
 
-<!-- Alert sound -->
 <audio id="alarmSound">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
 <script>
@@ -122,7 +196,6 @@ document.getElementById("logForm").addEventListener("submit", e => {
         supplier: supplier.value,
         defect: defect.value,
         solution: solution.value,
-        start: Date.now(),
         laps: 0
     };
 
@@ -131,67 +204,71 @@ document.getElementById("logForm").addEventListener("submit", e => {
 });
 
 function createLog(log) {
-    const div = document.createElement("div");
-    div.className = "log";
+    const card = document.createElement("div");
+    card.className = "log";
 
-    const timerSpan = document.createElement("div");
-    timerSpan.className = "timer";
+    const details = document.createElement("div");
+    details.className = "log-details";
+    details.innerHTML = `
+        <div><strong>Date:</strong> ${log.date}</div>
+        <div><strong>Store:</strong> ${log.store}</div>
+        <div><strong>Name:</strong> ${log.name}</div>
+        <div><strong>Reg:</strong> ${log.reg}</div>
+        <div><strong>Supplier:</strong> ${log.supplier}</div>
+        <div><strong>Issue:</strong> ${log.defect}</div>
+        <div><strong>Solution:</strong> ${log.solution}</div>
+    `;
 
-    const lapSpan = document.createElement("div");
-    lapSpan.className = "laps";
-    lapSpan.textContent = "30min checks: 0";
+    const timerBox = document.createElement("div");
+    timerBox.className = "log-timer";
+
+    const timer = document.createElement("div");
+    timer.className = "timer";
+
+    const laps = document.createElement("div");
+    laps.className = "laps";
+    laps.textContent = "30min checks: 0";
 
     let startTime = Date.now();
 
     const interval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const remaining = 1800000 - elapsed;
+        let remaining = 1800000 - elapsed;
 
         if (remaining <= 0) {
             log.laps++;
-            lapSpan.textContent = `30min checks: ${log.laps}`;
+            laps.textContent = `30min checks: ${log.laps}`;
             alarmSound.play();
-            startTime = Date.now(); // reset timer
+            startTime = Date.now();
+            remaining = 1800000;
         }
 
-        const mins = Math.floor(Math.max(remaining, 0) / 60000);
-        const secs = Math.floor((Math.max(remaining, 0) % 60000) / 1000);
-        timerSpan.textContent = `⏱ ${mins}:${secs.toString().padStart(2, "0")}`;
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        timer.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
     }, 1000);
 
-    div.innerHTML = `
-        <strong>Date:</strong> ${log.date}<br>
-        <strong>Store:</strong> ${log.store}<br>
-        <strong>Name:</strong> ${log.name}<br>
-        <strong>Reg:</strong> ${log.reg}<br>
-        <strong>Supplier:</strong> ${log.supplier}<br>
-        <strong>Issue:</strong> ${log.defect}<br>
-        <strong>Solution:</strong> ${log.solution}<br>
-    `;
-
     const completeBtn = document.createElement("button");
-    completeBtn.textContent = "Complete Job";
-    completeBtn.className = "complete";
+    completeBtn.textContent = "Complete";
 
     completeBtn.onclick = () => {
         clearInterval(interval);
-
-        const completed = {
+        completedJobs.push({
             ...log,
             completedTime: new Date().toLocaleString()
-        };
-
-        completedJobs.push(completed);
+        });
         localStorage.setItem("completedJobs", JSON.stringify(completedJobs));
-        addCompletedRow(completed);
-        div.remove();
+        addCompletedRow(completedJobs[completedJobs.length - 1]);
+        card.remove();
     };
 
-    div.appendChild(timerSpan);
-    div.appendChild(lapSpan);
-    div.appendChild(completeBtn);
+    timerBox.appendChild(timer);
+    timerBox.appendChild(laps);
+    timerBox.appendChild(completeBtn);
 
-    logsDiv.appendChild(div);
+    card.appendChild(details);
+    card.appendChild(timerBox);
+    logsDiv.appendChild(card);
 }
 
 function addCompletedRow(job) {
@@ -216,17 +293,19 @@ function downloadCSV() {
     });
 
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = "completed_jobs.csv";
     a.click();
+}
 
-    URL.revokeObjectURL(url);
+function resetCompletedJobs() {
+    if (!confirm("Clear all completed jobs?")) return;
+    completedJobs = [];
+    localStorage.removeItem("completedJobs");
+    completedTable.innerHTML = "";
 }
 </script>
 
 </body>
 </html>
-
