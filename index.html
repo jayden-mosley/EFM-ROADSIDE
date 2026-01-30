@@ -4,17 +4,18 @@
 <meta charset="UTF-8">
 <title>Vehicle Log System</title>
 
-<!-- Firebase SDKs (NO npm, NO import) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <style>
 body {
     font-family: Arial, sans-serif;
     background: #f4f6f8;
     padding: 20px;
 }
-h1, h2 { margin: 20px 0 10px; }
+
+h1, h2 {
+    margin: 20px 0 10px;
+}
+
+/* ---------- FORM LAYOUT ---------- */
 form {
     display: flex;
     flex-wrap: wrap;
@@ -23,32 +24,43 @@ form {
     padding: 15px;
     border-radius: 6px;
 }
+
 form input, form textarea {
     flex: 1 1 200px;
     padding: 8px;
 }
-form textarea { min-height: 60px; }
+
+form textarea {
+    min-height: 60px;
+}
+
 form button {
     flex: 1 1 100%;
     padding: 10px;
     background: #007bff;
     color: white;
     border: none;
+    cursor: pointer;
 }
+
+/* ---------- LOG CARDS ---------- */
 #logs {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
+
 .log {
     display: flex;
     justify-content: space-between;
-    gap: 15px;
+    align-items: center;
     background: #fff;
     padding: 15px;
     border-radius: 6px;
     border-left: 5px solid #007bff;
+    gap: 15px;
 }
+
 .log-details {
     flex: 3;
     display: grid;
@@ -56,36 +68,68 @@ form button {
     gap: 5px 15px;
     font-size: 0.9em;
 }
+
 .log-timer {
     flex: 1;
     text-align: center;
 }
-.timer { font-weight: bold; color: #c00; }
-.laps { font-size: 0.85em; color: #555; }
+
+.timer {
+    font-weight: bold;
+    color: #c00;
+    font-size: 1.1em;
+}
+
+.laps {
+    font-size: 0.85em;
+    color: #555;
+}
+
 .log button {
     background: #28a745;
     color: white;
     border: none;
     padding: 10px;
+    cursor: pointer;
 }
+
+/* ---------- COMPLETED SECTION ---------- */
 .actions {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
 }
-.download { background: #007bff; color: white; }
-.reset { background: #dc3545; color: white; }
+
+.actions button {
+    padding: 8px 12px;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+.download {
+    background: #007bff;
+}
+
+.reset {
+    background: #dc3545;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
     background: #fff;
 }
+
 th, td {
     border: 1px solid #ccc;
     padding: 8px;
     font-size: 0.9em;
 }
-th { background: #eee; }
+
+th {
+    background: #eee;
+}
 </style>
 </head>
 
@@ -133,37 +177,14 @@ th { background: #eee; }
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
-<!-- Firebase (CDN – REQUIRED for GitHub Pages) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <script>
-/* ---------- FIREBASE INIT ---------- */
-const firebaseConfig = {
-  apiKey: "AIzaSyAqSeC_7pZHIOCKzVaBXX2-b3IpouECXJI",
-  authDomain: "efm-roadside.firebaseapp.com",
-  databaseURL: "https://efm-roadside-default-rtdb.firebaseio.com",
-  projectId: "efm-roadside",
-  storageBucket: "efm-roadside.appspot.com",
-  messagingSenderId: "420379390452",
-  appId: "1:420379390452:web:75f977da10fd84526589a1"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-/* ---------- DOM ---------- */
 const logsDiv = document.getElementById("logs");
 const completedTable = document.getElementById("completedTable");
 const alarmSound = document.getElementById("alarmSound");
 
-/* ---------- LOAD COMPLETED JOBS (LIVE SYNC) ---------- */
-db.ref("completedJobs").on("value", snapshot => {
-    completedTable.innerHTML = "";
-    snapshot.forEach(child => addCompletedRow(child.val()));
-});
+let completedJobs = JSON.parse(localStorage.getItem("completedJobs")) || [];
+completedJobs.forEach(addCompletedRow);
 
-/* ---------- FORM ---------- */
 document.getElementById("logForm").addEventListener("submit", e => {
     e.preventDefault();
 
@@ -182,7 +203,6 @@ document.getElementById("logForm").addEventListener("submit", e => {
     e.target.reset();
 });
 
-/* ---------- ACTIVE LOG ---------- */
 function createLog(log) {
     const card = document.createElement("div");
     card.className = "log";
@@ -212,7 +232,8 @@ function createLog(log) {
     let startTime = Date.now();
 
     const interval = setInterval(() => {
-        let remaining = 1800000 - (Date.now() - startTime);
+        const elapsed = Date.now() - startTime;
+        let remaining = 1800000 - elapsed;
 
         if (remaining <= 0) {
             log.laps++;
@@ -224,7 +245,7 @@ function createLog(log) {
 
         const mins = Math.floor(remaining / 60000);
         const secs = Math.floor((remaining % 60000) / 1000);
-        timer.textContent = `${mins}:${secs.toString().padStart(2,"0")}`;
+        timer.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
     }, 1000);
 
     const completeBtn = document.createElement("button");
@@ -232,19 +253,24 @@ function createLog(log) {
 
     completeBtn.onclick = () => {
         clearInterval(interval);
-        db.ref("completedJobs").push({
+        completedJobs.push({
             ...log,
             completedTime: new Date().toLocaleString()
         });
+        localStorage.setItem("completedJobs", JSON.stringify(completedJobs));
+        addCompletedRow(completedJobs[completedJobs.length - 1]);
         card.remove();
     };
 
-    timerBox.append(timer, laps, completeBtn);
-    card.append(details, timerBox);
+    timerBox.appendChild(timer);
+    timerBox.appendChild(laps);
+    timerBox.appendChild(completeBtn);
+
+    card.appendChild(details);
+    card.appendChild(timerBox);
     logsDiv.appendChild(card);
 }
 
-/* ---------- COMPLETED ---------- */
 function addCompletedRow(job) {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -260,13 +286,26 @@ function addCompletedRow(job) {
     completedTable.appendChild(row);
 }
 
-/* ---------- RESET ---------- */
+function downloadCSV() {
+    let csv = "Date,Store,Name,Reg,Supplier,Defect,Solution,Completed\n";
+    completedJobs.forEach(j => {
+        csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "completed_jobs.csv";
+    a.click();
+}
+
 function resetCompletedJobs() {
-    if (!confirm("Clear all completed jobs for everyone?")) return;
-    db.ref("completedJobs").remove();
+    if (!confirm("Clear all completed jobs?")) return;
+    completedJobs = [];
+    localStorage.removeItem("completedJobs");
+    completedTable.innerHTML = "";
 }
 </script>
-
 
 </body>
 </html>
