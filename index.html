@@ -133,9 +133,13 @@ th { background: #eee; }
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
+<!-- Firebase (CDN – REQUIRED for GitHub Pages) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
 /* ---------- FIREBASE INIT ---------- */
-firebase.initializeApp({
+const firebaseConfig = {
   apiKey: "AIzaSyAqSeC_7pZHIOCKzVaBXX2-b3IpouECXJI",
   authDomain: "efm-roadside.firebaseapp.com",
   databaseURL: "https://efm-roadside-default-rtdb.firebaseio.com",
@@ -143,34 +147,27 @@ firebase.initializeApp({
   storageBucket: "efm-roadside.appspot.com",
   messagingSenderId: "420379390452",
   appId: "1:420379390452:web:75f977da10fd84526589a1"
-});
+};
 
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ---------- GLOBALS ---------- */
+/* ---------- DOM ---------- */
 const logsDiv = document.getElementById("logs");
 const completedTable = document.getElementById("completedTable");
 const alarmSound = document.getElementById("alarmSound");
 
-let completedJobs = [];
-
-/* ---------- SYNC COMPLETED JOBS ---------- */
+/* ---------- LOAD COMPLETED JOBS (LIVE SYNC) ---------- */
 db.ref("completedJobs").on("value", snapshot => {
-    completedJobs = [];
     completedTable.innerHTML = "";
-
-    snapshot.forEach(child => {
-        const job = child.val();
-        completedJobs.push(job);
-        addCompletedRow(job);
-    });
+    snapshot.forEach(child => addCompletedRow(child.val()));
 });
 
 /* ---------- FORM ---------- */
 document.getElementById("logForm").addEventListener("submit", e => {
     e.preventDefault();
 
-    createLog({
+    const log = {
         date: date.value,
         store: store.value,
         name: name.value,
@@ -179,8 +176,9 @@ document.getElementById("logForm").addEventListener("submit", e => {
         defect: defect.value,
         solution: solution.value,
         laps: 0
-    });
+    };
 
+    createLog(log);
     e.target.reset();
 });
 
@@ -202,15 +200,20 @@ function createLog(log) {
     `;
 
     const timerBox = document.createElement("div");
+    timerBox.className = "log-timer";
+
     const timer = document.createElement("div");
     timer.className = "timer";
+
     const laps = document.createElement("div");
     laps.className = "laps";
     laps.textContent = "30min checks: 0";
 
     let startTime = Date.now();
+
     const interval = setInterval(() => {
         let remaining = 1800000 - (Date.now() - startTime);
+
         if (remaining <= 0) {
             log.laps++;
             laps.textContent = `30min checks: ${log.laps}`;
@@ -218,14 +221,16 @@ function createLog(log) {
             startTime = Date.now();
             remaining = 1800000;
         }
-        const m = Math.floor(remaining / 60000);
-        const s = Math.floor((remaining % 60000) / 1000);
-        timer.textContent = `${m}:${s.toString().padStart(2, "0")}`;
+
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        timer.textContent = `${mins}:${secs.toString().padStart(2,"0")}`;
     }, 1000);
 
-    const btn = document.createElement("button");
-    btn.textContent = "Complete";
-    btn.onclick = () => {
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = "Complete";
+
+    completeBtn.onclick = () => {
         clearInterval(interval);
         db.ref("completedJobs").push({
             ...log,
@@ -234,12 +239,12 @@ function createLog(log) {
         card.remove();
     };
 
-    timerBox.append(timer, laps, btn);
+    timerBox.append(timer, laps, completeBtn);
     card.append(details, timerBox);
     logsDiv.appendChild(card);
 }
 
-/* ---------- TABLE ---------- */
+/* ---------- COMPLETED ---------- */
 function addCompletedRow(job) {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -255,25 +260,13 @@ function addCompletedRow(job) {
     completedTable.appendChild(row);
 }
 
-/* ---------- CSV ---------- */
-function downloadCSV() {
-    let csv = "Date,Store,Name,Reg,Supplier,Defect,Solution,Completed\n";
-    completedJobs.forEach(j => {
-        csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
-    });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "completed_jobs.csv";
-    a.click();
-}
-
 /* ---------- RESET ---------- */
 function resetCompletedJobs() {
     if (!confirm("Clear all completed jobs for everyone?")) return;
     db.ref("completedJobs").remove();
 }
 </script>
+
 
 </body>
 </html>
