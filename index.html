@@ -5,123 +5,26 @@
 <title>Vehicle Log System</title>
 
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    padding: 20px;
-}
-
-h1, h2 {
-    margin: 20px 0 10px;
-}
-
-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    background: #fff;
-    padding: 15px;
-    border-radius: 6px;
-}
-
-form input, form textarea {
-    flex: 1 1 200px;
-    padding: 8px;
-}
-
-form textarea {
-    min-height: 60px;
-}
-
-form button {
-    flex: 1 1 100%;
-    padding: 10px;
-    background: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
-
-#logs {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.log {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    padding: 15px;
-    border-radius: 6px;
-    border-left: 5px solid #007bff;
-    gap: 15px;
-}
-
-.log-details {
-    flex: 3;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px 15px;
-    font-size: 0.9em;
-}
-
-.log-timer {
-    flex: 1;
-    text-align: center;
-}
-
-.timer {
-    font-weight: bold;
-    color: #c00;
-    font-size: 1.1em;
-}
-
-.laps {
-    font-size: 0.85em;
-    color: #555;
-}
-
-.log button {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-}
-
-.actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.actions button {
-    padding: 8px 12px;
-    border: none;
-    color: white;
-    cursor: pointer;
-}
-
-.download { background: #007bff; }
-.reset { background: #dc3545; }
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-}
-
-th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    font-size: 0.9em;
-}
-
-th {
-    background: #eee;
-}
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+h1,h2 { margin:20px 0 10px; }
+form { display:flex; flex-wrap:wrap; gap:10px; background:#fff; padding:15px; border-radius:6px; }
+form input, form textarea { flex:1 1 200px; padding:8px; }
+form textarea { min-height:60px; }
+form button { flex:1 1 100%; padding:10px; background:#007bff; color:#fff; border:none; cursor:pointer; }
+#logs { display:flex; flex-direction:column; gap:15px; }
+.log { display:flex; justify-content:space-between; background:#fff; padding:15px; border-radius:6px; border-left:5px solid #007bff; gap:15px; }
+.log-details { flex:3; display:grid; grid-template-columns:repeat(3,1fr); gap:5px 15px; font-size:.9em; }
+.log-timer { flex:1; text-align:center; }
+.timer { font-weight:bold; color:#c00; font-size:1.1em; }
+.laps { font-size:.85em; color:#555; }
+.log button { background:#28a745; color:#fff; border:none; padding:10px; cursor:pointer; }
+.actions { display:flex; gap:10px; margin-bottom:10px; }
+.actions button { padding:8px 12px; border:none; color:#fff; cursor:pointer; }
+.download { background:#007bff; }
+.reset { background:#dc3545; }
+table { width:100%; border-collapse:collapse; background:#fff; }
+th,td { border:1px solid #ccc; padding:8px; font-size:.9em; }
+th { background:#eee; }
 </style>
 </head>
 
@@ -135,7 +38,7 @@ th {
     <input id="name" placeholder="Name" required>
     <input id="reg" placeholder="Reg No" required>
     <input id="supplier" placeholder="Supplier" required>
-    <textarea id="defect" placeholder="What is wrong with van?" required></textarea>
+    <textarea id="defect" placeholder="What is wrong?" required></textarea>
     <textarea id="solution" placeholder="Solution?" required></textarea>
     <button type="submit">Add Log</button>
 </form>
@@ -145,21 +48,15 @@ th {
 
 <h2>Completed Jobs</h2>
 <div class="actions">
-    <button class="download" onclick="downloadCSV()">Download Excel (CSV)</button>
-    <button class="reset" onclick="resetCompletedJobs()">Reset Completed Jobs</button>
+    <button id="downloadBtn" class="download">Download Excel (CSV)</button>
+    <button id="resetBtn" class="reset">Reset Completed Jobs</button>
 </div>
 
 <table>
 <thead>
 <tr>
-    <th>Date</th>
-    <th>Store</th>
-    <th>Name</th>
-    <th>Reg</th>
-    <th>Supplier</th>
-    <th>Defect</th>
-    <th>Solution</th>
-    <th>Completed</th>
+<th>Date</th><th>Store</th><th>Name</th><th>Reg</th>
+<th>Supplier</th><th>Defect</th><th>Solution</th><th>Completed</th>
 </tr>
 </thead>
 <tbody id="completedTable"></tbody>
@@ -169,17 +66,11 @@ th {
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
-<!-- 🔥 FIREBASE SETUP -->
+<!-- ✅ FIREBASE + APP CODE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCrO90s1tWUMXpKKJqLjuWAemG-y4S1wIk",
@@ -197,23 +88,22 @@ const logsDiv = document.getElementById("logs");
 const completedTable = document.getElementById("completedTable");
 const alarmSound = document.getElementById("alarmSound");
 
-let completedJobs = [];
+const completedJobs = [];
 
-// LOAD COMPLETED JOBS FROM FIRESTORE
-async function loadCompletedJobs() {
+/* LOAD COMPLETED JOBS */
+(async () => {
     const snap = await getDocs(collection(db, "completedJobs"));
     snap.forEach(d => {
         const job = d.data();
         completedJobs.push(job);
         addCompletedRow(job);
     });
-}
-loadCompletedJobs();
+})();
 
-document.getElementById("logForm").addEventListener("submit", e => {
+/* FORM */
+logForm.addEventListener("submit", e => {
     e.preventDefault();
-
-    const log = {
+    createLog({
         date: date.value,
         store: store.value,
         name: name.value,
@@ -222,12 +112,11 @@ document.getElementById("logForm").addEventListener("submit", e => {
         defect: defect.value,
         solution: solution.value,
         laps: 0
-    };
-
-    createLog(log);
+    });
     e.target.reset();
 });
 
+/* ACTIVE LOG */
 function createLog(log) {
     const card = document.createElement("div");
     card.className = "log";
@@ -235,58 +124,55 @@ function createLog(log) {
     const details = document.createElement("div");
     details.className = "log-details";
     details.innerHTML = `
-        <div><strong>Date:</strong> ${log.date}</div>
-        <div><strong>Store:</strong> ${log.store}</div>
-        <div><strong>Name:</strong> ${log.name}</div>
-        <div><strong>Reg:</strong> ${log.reg}</div>
-        <div><strong>Supplier:</strong> ${log.supplier}</div>
-        <div><strong>Issue:</strong> ${log.defect}</div>
-        <div><strong>Solution:</strong> ${log.solution}</div>
+        <div><b>Date:</b> ${log.date}</div>
+        <div><b>Store:</b> ${log.store}</div>
+        <div><b>Name:</b> ${log.name}</div>
+        <div><b>Reg:</b> ${log.reg}</div>
+        <div><b>Supplier:</b> ${log.supplier}</div>
+        <div><b>Issue:</b> ${log.defect}</div>
+        <div><b>Solution:</b> ${log.solution}</div>
     `;
 
     const timerBox = document.createElement("div");
-    timerBox.className = "log-timer";
-
     const timer = document.createElement("div");
     timer.className = "timer";
-
     const laps = document.createElement("div");
     laps.className = "laps";
-    laps.textContent = "30min checks: 0";
 
-    let startTime = Date.now();
+    let start = Date.now();
+    let lapCount = 0;
 
     const interval = setInterval(() => {
-        let remaining = 1800000 - (Date.now() - startTime);
+        let remaining = 1800000 - (Date.now() - start);
         if (remaining <= 0) {
-            log.laps++;
-            laps.textContent = `30min checks: ${log.laps}`;
+            lapCount++;
+            laps.textContent = `30min checks: ${lapCount}`;
             alarmSound.play();
-            startTime = Date.now();
-            remaining = 1800000;
+            start = Date.now();
         }
-        const mins = Math.floor(remaining / 60000);
-        const secs = Math.floor((remaining % 60000) / 1000);
-        timer.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
+        timer.textContent =
+            Math.floor(remaining / 60000) + ":" +
+            String(Math.floor((remaining % 60000) / 1000)).padStart(2,"0");
     }, 1000);
 
     const completeBtn = document.createElement("button");
     completeBtn.textContent = "Complete";
 
-    completeBtn.onclick = async () => {
+    completeBtn.addEventListener("click", async () => {
         clearInterval(interval);
         const completed = { ...log, completedTime: new Date().toLocaleString() };
         completedJobs.push(completed);
         await addDoc(collection(db, "completedJobs"), completed);
         addCompletedRow(completed);
         card.remove();
-    };
+    });
 
     timerBox.append(timer, laps, completeBtn);
     card.append(details, timerBox);
     logsDiv.appendChild(card);
 }
 
+/* COMPLETED TABLE */
 function addCompletedRow(job) {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -302,25 +188,26 @@ function addCompletedRow(job) {
     completedTable.appendChild(row);
 }
 
-function downloadCSV() {
+/* BUTTONS */
+downloadBtn.addEventListener("click", () => {
     let csv = "Date,Store,Name,Reg,Supplier,Defect,Solution,Completed\n";
     completedJobs.forEach(j => {
         csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
     });
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type:"text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "completed_jobs.csv";
     a.click();
-}
+});
 
-async function resetCompletedJobs() {
+resetBtn.addEventListener("click", async () => {
     if (!confirm("Clear all completed jobs?")) return;
     const snap = await getDocs(collection(db, "completedJobs"));
     snap.forEach(d => deleteDoc(doc(db, "completedJobs", d.id)));
-    completedJobs = [];
+    completedJobs.length = 0;
     completedTable.innerHTML = "";
-}
+});
 </script>
 
 </body>
