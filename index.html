@@ -15,7 +15,6 @@ h1, h2 {
     margin: 20px 0 10px;
 }
 
-/* ---------- FORM LAYOUT ---------- */
 form {
     display: flex;
     flex-wrap: wrap;
@@ -43,7 +42,6 @@ form button {
     cursor: pointer;
 }
 
-/* ---------- LOG CARDS ---------- */
 #logs {
     display: flex;
     flex-direction: column;
@@ -93,7 +91,6 @@ form button {
     cursor: pointer;
 }
 
-/* ---------- COMPLETED SECTION ---------- */
 .actions {
     display: flex;
     gap: 10px;
@@ -107,13 +104,8 @@ form button {
     cursor: pointer;
 }
 
-.download {
-    background: #007bff;
-}
-
-.reset {
-    background: #dc3545;
-}
+.download { background: #007bff; }
+.reset { background: #dc3545; }
 
 table {
     width: 100%;
@@ -177,13 +169,46 @@ th {
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
-<script>
+<!-- 🔥 FIREBASE SETUP -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCrO90s1tWUMXpKKJqLjuWAemG-y4S1wIk",
+  authDomain: "vehicle-log-system-9205c.firebaseapp.com",
+  projectId: "vehicle-log-system-9205c",
+  storageBucket: "vehicle-log-system-9205c.firebasestorage.app",
+  messagingSenderId: "291690618754",
+  appId: "1:291690618754:web:d21b5c983c2f03f088f99b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const logsDiv = document.getElementById("logs");
 const completedTable = document.getElementById("completedTable");
 const alarmSound = document.getElementById("alarmSound");
 
-let completedJobs = JSON.parse(localStorage.getItem("completedJobs")) || [];
-completedJobs.forEach(addCompletedRow);
+let completedJobs = [];
+
+// LOAD COMPLETED JOBS FROM FIRESTORE
+async function loadCompletedJobs() {
+    const snap = await getDocs(collection(db, "completedJobs"));
+    snap.forEach(d => {
+        const job = d.data();
+        completedJobs.push(job);
+        addCompletedRow(job);
+    });
+}
+loadCompletedJobs();
 
 document.getElementById("logForm").addEventListener("submit", e => {
     e.preventDefault();
@@ -232,9 +257,7 @@ function createLog(log) {
     let startTime = Date.now();
 
     const interval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        let remaining = 1800000 - elapsed;
-
+        let remaining = 1800000 - (Date.now() - startTime);
         if (remaining <= 0) {
             log.laps++;
             laps.textContent = `30min checks: ${log.laps}`;
@@ -242,7 +265,6 @@ function createLog(log) {
             startTime = Date.now();
             remaining = 1800000;
         }
-
         const mins = Math.floor(remaining / 60000);
         const secs = Math.floor((remaining % 60000) / 1000);
         timer.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -251,23 +273,17 @@ function createLog(log) {
     const completeBtn = document.createElement("button");
     completeBtn.textContent = "Complete";
 
-    completeBtn.onclick = () => {
+    completeBtn.onclick = async () => {
         clearInterval(interval);
-        completedJobs.push({
-            ...log,
-            completedTime: new Date().toLocaleString()
-        });
-        localStorage.setItem("completedJobs", JSON.stringify(completedJobs));
-        addCompletedRow(completedJobs[completedJobs.length - 1]);
+        const completed = { ...log, completedTime: new Date().toLocaleString() };
+        completedJobs.push(completed);
+        await addDoc(collection(db, "completedJobs"), completed);
+        addCompletedRow(completed);
         card.remove();
     };
 
-    timerBox.appendChild(timer);
-    timerBox.appendChild(laps);
-    timerBox.appendChild(completeBtn);
-
-    card.appendChild(details);
-    card.appendChild(timerBox);
+    timerBox.append(timer, laps, completeBtn);
+    card.append(details, timerBox);
     logsDiv.appendChild(card);
 }
 
@@ -291,7 +307,6 @@ function downloadCSV() {
     completedJobs.forEach(j => {
         csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
     });
-
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -299,10 +314,11 @@ function downloadCSV() {
     a.click();
 }
 
-function resetCompletedJobs() {
+async function resetCompletedJobs() {
     if (!confirm("Clear all completed jobs?")) return;
+    const snap = await getDocs(collection(db, "completedJobs"));
+    snap.forEach(d => deleteDoc(doc(db, "completedJobs", d.id)));
     completedJobs = [];
-    localStorage.removeItem("completedJobs");
     completedTable.innerHTML = "";
 }
 </script>
