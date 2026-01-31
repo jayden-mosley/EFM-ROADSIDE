@@ -140,7 +140,6 @@ th {
 <form id="logForm">
     <input id="date" type="date" required>
     <input id="store" placeholder="Store No" required>
-    <input id="name" placeholder="Name" required>
     <input id="reg" placeholder="Reg No" required>
     <input id="supplier" placeholder="Supplier" required>
     <textarea id="defect" placeholder="What is wrong with van?" required></textarea>
@@ -162,7 +161,6 @@ th {
 <tr>
     <th>Date</th>
     <th>Store</th>
-    <th>Name</th>
     <th>Reg</th>
     <th>Supplier</th>
     <th>Defect</th>
@@ -191,7 +189,6 @@ document.getElementById("logForm").addEventListener("submit", e => {
     const log = {
         date: date.value,
         store: store.value,
-        name: name.value,
         reg: reg.value,
         supplier: supplier.value,
         defect: defect.value,
@@ -212,7 +209,6 @@ function createLog(log) {
     details.innerHTML = `
         <div><strong>Date:</strong> ${log.date}</div>
         <div><strong>Store:</strong> ${log.store}</div>
-        <div><strong>Name:</strong> ${log.name}</div>
         <div><strong>Reg:</strong> ${log.reg}</div>
         <div><strong>Supplier:</strong> ${log.supplier}</div>
         <div><strong>Issue:</strong> ${log.defect}</div>
@@ -276,7 +272,6 @@ function addCompletedRow(job) {
     row.innerHTML = `
         <td>${job.date}</td>
         <td>${job.store}</td>
-        <td>${job.name}</td>
         <td>${job.reg}</td>
         <td>${job.supplier}</td>
         <td>${job.defect}</td>
@@ -289,7 +284,7 @@ function addCompletedRow(job) {
 function downloadCSV() {
     let csv = "Date,Store,Name,Reg,Supplier,Defect,Solution,Completed\n";
     completedJobs.forEach(j => {
-        csv += `"${j.date}","${j.store}","${j.name}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
+        csv += `"${j.date}","${j.store}","${j.reg}","${j.supplier}","${j.defect}","${j.solution}","${j.completedTime}"\n`;
     });
 
     const blob = new Blob([csv], { type: "text/csv" });
